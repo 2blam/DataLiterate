@@ -1,0 +1,158 @@
+---
+title: "A CSV of bicycle rental transactions from the Bay Area Bike Share Data Challenge."
+author: "Toby Lam"
+date: "Wednesday, January 14, 2015"
+output: html_document
+---
+
+##Background
+
+The dataset would be download from this [1]. Suppose the file was downloaded in the machine. Let's have a brief look about the data.
+
+```{r}
+#read the file
+df = read.csv("bike_trip_data.csv", stringsAsFactor=FALSE)
+
+#checking
+dim(df) #dimension of the data
+head(df)
+summary(df)
+```
+
+The dataset contains 144015 rows and 11 columns. The columns are listed as follows:
+
+- Trip.ID
+- Duration (in seconds)
+- Start.Date
+- Start.Station
+- Start.Terminal - a number which maps the Start.Station
+- End.Date
+- End.Station
+- End.Terminal - a number which maps the End.Station
+- Bike..
+- Subscription.Type
+- Zip.Code
+
+Let's check the number of unique start-station and unique end-station. Furthermore, check if they  contain the same set of the stations.
+```{r}
+length(unique(df$Start.Station))
+length(unique(df$End.Station))
+
+#check if they are with the same set of the station
+any(sort(unique(df$Start.Station)) != sort(unique(df$End.Station)))
+```
+
+There are total 69 bike stations. In addition, the start-stations and end-stations are using the same set of stations.
+
+##Solution to 3 problems
+There are 3 questions that we need to answer. I listed the questions as follows:
+
+1. What was the average total time (in minutes) used by a bicycle in the data?
+2. What was the most popular day by trip frequency in this dataset?
+3. (harder): Assuming there are 30 bikes per station, find what date and time the bikes FIRST need to be rebalanced. As in, there are 0 bikes at a terminal for a customer to rent. 
+3. (easier): Assuming there are 30 bikes per station, find what date the bikes FIRST need to be rebalanced. As in, there are 0 bikes at a terminal for a customer to rent. Do this ignoring "Start.Date" and "End.Date" columns.
+
+### 1. What was the average total time (in minutes) used by a bicycle in the data?
+
+To answer this question, we only need to get the mean of the column "Duration".
+
+```{r}
+avgDuration = mean(df$Duration) / 60 #unit in minute
+```
+
+The average total time (in minutes) used by a bicycle in the data: _`r avgDuration`_ minutes
+
+### 2. What was the most popular day by trip frequency in this dataset?
+
+Refer to this question, I consider the most popular day by trip frequency is the most number of people who rented a bicycle in one day.
+
+For people who rented a bicycle with a duration more than 24 hours, I only considered the frequency as 1 for the start day.
+
+```{r}
+#create a new data frame with the day only
+t = as.data.frame(as.Date(df$Start.Date, "%m/%d/%y"))
+names(t)[1] = "day"
+idx = which.max(table(t))
+popularDay = table(t)[idx]
+```
+
+
+As you can see, the most popular day by trip frequency is _`r names(popularDay)`_ which have _`r popularDay`_ number of people who rented a bicycle.
+
+
+### 3. Assuming there are 30 bikes per station, find what date and time the bikes FIRST need to be rebalanced. As in, there are 0 bikes at a terminal for a customer to rent. 
+
+I tried to tackle the harder part of this question. 
+
+I created a function `getRebalanceDate` to obtain the rebalance time for a particular station (id). IDEA of the function:
+
+- get all data frame (df) and the station id (id) from the parameters
+- extract the rows (with columns: Start.Date only) which a bike was borrowed from the corrsponding id and store to a data frame (outDF)
+- add a new column named state which all the entries with value -1
+- extract the rows (with columns: End.Date only) which a bike was returned to the corrsponding id and store to a data frame (inDF)
+- add a new column named state which all the entries with value 1
+- combine two data frames together and store in a new data frame named DF
+- sort the DF with respect to the date time in ascending order
+- reset the state in first row by using the formula: 30 + the current state value 
+- calcuate the acculated sum and check the first location with state value as ZERO
+- if so, return such date time; otherwise, return NA
+
+```{r}
+getRebalanceDate = function(df, id){
+  #create data frame - out
+  outDF = as.data.frame(df[which(df$Start.Terminal == id), c("Start.Date")])
+  outDF$state = -1
+  names(outDF)[1] = "time"
+  #create data frame - in
+  inDF = as.data.frame(df[which(df$End.Terminal == id), c("End.Date")])
+  inDF$state = 1
+  names(inDF)[1] = "time"
+  
+  #combine two data frame
+  DF = rbind(outDF, inDF)
+  #sort by date time
+  DF = DF[order(as.POSIXlt(DF$time, format="%m/%d/%y %H:%M")), ]
+  #at the begining with 30 bicycle
+  DF[1, "state"] = DF[1, "state"] + 30
+  #calculate the acculated sum
+  csum = cumsum(DF$state)
+  #check which index get the value 0
+  idxs = which(csum == 0)
+  #get the date time
+  as.character(DF[idxs[1], "time"])
+}
+```
+
+To obtain the FIRST date and time need to rebalance the bikes, we only need to use lapply to call the getRebalanceDate function. Then, store the result in a data frame and sorted it by the time accordingly. The first element will be the FIRST date and time that needs rebalance.
+
+```{r}
+#create a record data frame
+record = as.data.frame(as.character(unique(df$Start.Station)))
+record$id = as.character(unique(df$Start.Terminal)) #get the ids
+
+#get the rebalance time
+l = unlist(lapply(record$id, function(x){
+        getRebalanceDate(df, x)
+      }))
+#update the record
+record$time = l
+
+#sort the data with respect to the time
+record = record[order(as.POSIXlt(record$time, format="%m/%d/%y %H:%M")), ]
+```
+
+The station _`r record[1, 1]`_ first need to re-balanced on _`r record[1, 3]`_.
+
+There are a number of station required to rebalance also. We can get this information by using the following code.
+
+```{r}
+stationNeedRebalance = record[!is.na(record$time), ]
+stationNeedRebalance
+```
+
+The total number of station need rebalance: _`r nrow(stationNeedRebalance)`_.
+
+
+
+## Reference
+[1] - http://mandrillapp.com/track/click/30315607/s3-us-west-1.amazonaws.com?p=eyJzIjoiRjBqdTctUHl3LTlMY1FkZU9SVVl3ZDRoV29VIiwidiI6MSwicCI6IntcInVcIjozMDMxNTYwNyxcInZcIjoxLFwidXJsXCI6XCJodHRwczpcXFwvXFxcL3MzLXVzLXdlc3QtMS5hbWF6b25hd3MuY29tXFxcL2RhdGF5ZWFyXFxcL2Jpa2VfdHJpcF9kYXRhLmNzdlwiLFwiaWRcIjpcIjFlMTRlMDVmYzNmNjRiNzE4NTEzYzQ1ZmNhNzI0OTA4XCIsXCJ1cmxfaWRzXCI6W1wiMTVlYzMzNWM1NDRlMTM1ZDI0YjAwODE4ZjI5YTdkMmFkZjU2NWQ2MVwiXX0ifQ
