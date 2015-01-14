@@ -152,7 +152,13 @@ stationNeedRebalance
 
 The total number of station need rebalance: _`r nrow(stationNeedRebalance)`_.
 
+*Note:*
 
+When I publish this document to Rpub, I encountered the errors about SSH and readBin. I refer to [2-3] to solve these two problems.
 
 ## Reference
 [1] - http://mandrillapp.com/track/click/30315607/s3-us-west-1.amazonaws.com?p=eyJzIjoiRjBqdTctUHl3LTlMY1FkZU9SVVl3ZDRoV29VIiwidiI6MSwicCI6IntcInVcIjozMDMxNTYwNyxcInZcIjoxLFwidXJsXCI6XCJodHRwczpcXFwvXFxcL3MzLXVzLXdlc3QtMS5hbWF6b25hd3MuY29tXFxcL2RhdGF5ZWFyXFxcL2Jpa2VfdHJpcF9kYXRhLmNzdlwiLFwiaWRcIjpcIjFlMTRlMDVmYzNmNjRiNzE4NTEzYzQ1ZmNhNzI0OTA4XCIsXCJ1cmxfaWRzXCI6W1wiMTVlYzMzNWM1NDRlMTM1ZDI0YjAwODE4ZjI5YTdkMmFkZjU2NWQ2MVwiXX0ifQ
+
+[2] - http://stackoverflow.com/questions/22537180/error-while-publishing-in-r-pubs
+
+[3] - https://support.rstudio.com/hc/communities/public/questions/202448223-Publish-to-rpubs-Error-in-readBin-conn-what-raw-n-contentLength-invalid-n-argument
