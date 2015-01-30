@@ -1,0 +1,498 @@
+---
+title: "Data Visualization on Ebola Data"
+author: "Toby Lam"
+date: "Friday, January 30, 2015"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(warning=FALSE, message=FALSE, fig.width=10, fig.height=7)
+
+Sys.setenv(LANGUAGE="en")
+Sys.setlocale("LC_TIME", "English")
+```
+
+### Background
+
+The dataset would be downloaded from [1]. There are 95 csv files. Each of them contains contains 38 pieces of information (we called this _variables_) among different counties, including national record, in Liberia. [2]
+
+Those 38 pieces of information are:
+
+- Specimens collected
+- Specimens pending for testing
+- Total specimens tested
+- Newly reported deaths
+- Total death/s in confirmed cases
+- Total death/s in probable cases
+- Total death/s in suspected cases
+- Total death/s in confirmed, probable, suspected cases
+- Case Fatality Rate (CFR) - Confirmed & Probable Cases
+- Newly reported contacts
+- Total contacts listed
+- Currently under follow-up
+- Contacts seen
+- Contacts who completed 21 day follow-up
+- Contacts lost to follow-up
+- New admissions
+- Total no. currently in Treatment Units
+- Total discharges
+- Cumulative admission/isolation
+- Newly Reported Cases in HCW
+- Cumulative cases among HCW
+- Newly Reported deaths in HCW
+- Cumulative deaths among HCW
+- New Case/s (Suspected)
+- New Case/s (Probable)
+- New case/s (confirmed)
+- Total suspected cases
+- Total probable cases
+- Total confirmed cases
+- Total Number of Confirmed Cases of Sierra Leonean Nationality
+- Total Number of Confirmed Cases of Guinean Nationality
+- Cumulative confirmed, probable and suspected cases
+
+16 counties in Liberia:
+
+- Bomi County
+- Bong County
+- Gbarpolu County
+- Grand Bassa
+- Grand Cape Mount
+- Grand Gedeh
+- Grand Kru
+- Lofa County
+- Margibi County
+- Maryland County
+- Montserrado County
+- Nimba County
+- River Gee County
+- RiverCess County
+- Sinoe County
+
+### 1: Aggregation + Data Munging 
+
+Suppose all the csv files are already downloaded in the machine. Then, it is necessary to aggregate the files into a single workable dataset.
+
+```{r}
+#set working directory
+setwd("C:/[DATA]/DataLiterate/P2")
+
+#set the csv directory
+csvDir = paste0(getwd(), "/csv")
+
+#get list of csv
+csvFiles = list.files(path=csvDir, full.names=TRUE)
+
+#combine all csv data into single data frame
+library(plyr)
+allData = do.call(rbind.fill, lapply(csvFiles, read.csv))
+
+#change all column names as lowercase
+colnames(allData) = tolower(colnames(allData))
+```
+
+First, let's check if there are really 38 different variables.
+
+```{r}
+variableNames = unique(allData$variable)
+```
+
+But, there are `r length(variableNames)` difference variable names in all csv files. They are:
+
+```{r echo=FALSE}
+sort(variableNames)
+```
+
+It is necessary to rename a number of variables names. For example, remove "\n" from the variable names.
+Furthermore, to ease for maniplulation, I converted the values of the variables into lowercase.
+
+```{r}
+allData$variable = gsub("\n ", "", allData$variable)
+allData$variable = gsub("  ", " ", allData$variable)
+allData$variable = tolower(allData$variable)
+variableNames = unique(allData$variable)
+sort(variableNames)
+```
+
+We finished the update about the variable names, now let's see the column names.
+
+```{r}
+sort(colnames(allData))
+```
+There are 19 columns among all csv files. There is a weird column namded "x".  I'd like to check how many row(s) with non-NA values in column x.
+
+```{r}
+allData[!is.na(allData$x), ] 
+```
+
+There are only 3 rows with non-NA values in column 'x'. It seems that those values in column x is not really meaningful (with value 0 or 1). I decided to drop this.
+
+```{r}
+allData$x = NULL #drop column x
+```
+
+Next, I would like to check the date format and see if they are consistent.
+
+```{r}
+unique(allData$date)
+```
+There are 94 Ebloa records between 6 June 2014 and 2 December 2014. From this information, we can learn that the Ebloa data was not updated every day in such close-to-half-year period. For the date format, as we can see that they are inconsistent. Some of them use the short form of the year (e.g. 14 for 2014) and some of them with the leading zero of the month (e.g. 09 for September). It is better to convert the date in consist way.
+
+```{r}
+#correct the date format
+allData$date = as.Date(gsub("/14$", "/2014", allData$date), "%m/%d/%Y")
+unique(allData$date)
+```
+
+### 2. Visualization
+
+#### Total death/s in confirmed cases
+
+By using the collected data, let's check the total death/s in confirmed cases in Liberia.
+
+```{r}
+totalDeaths = allData[allData$variable == "total death/s in confirmed cases", ]
+#remove the column about variable
+totalDeaths$variable = NULL
+
+#replace the 0 entry with NA in national
+totalDeaths[which(totalDeaths$national == 0), "national"] = NA
+
+library(ggplot2)
+library(reshape2)
+library(RColorBrewer)
+
+t = melt(totalDeaths, id.vars="date")
+colnames(t)[2] = "location" 
+colorCount = length(unique(t$location))
+getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+lp1 = ggplot(data=t, aes(x=date, y=value, group=location, color=location)) + geom_point() + geom_line(data=t[!is.na(t$value),], size=2)
+lp1 + scale_colour_manual(name = "Location",
+                          values=getPalette(colorCount),
+                          breaks=c("national", "bomi.county", "bong.county",
+                                   "grand.kru", "lofa.county", "margibi.county",
+                                   "maryland.county", "montserrado.county", "nimba.county",
+                                   "river.gee.county", "rivercess.county", "sinoe.county",
+                                   "gbarpolu.county", "grand.bassa", "grand.cape.mount",
+                                   "grand.gedeh"),
+                          labels=c("National", "Bomi County", "Bong County",
+                                   "Grand Kru County", "Lofa County", "Margibi County",
+                                   "Maryland County", "Montserrado County", "Nimba County",
+                                   "River Gee County", "Rivercess County", "Sinoe County",
+                                   "Gbarpolu County", "Grand Bassa County", "Grand Cape Mount County",
+                                   "Grand Gedeh County")) +
+  xlab("Year 2014") +
+  ylab("Total Number of Death(s)")  + 
+  ggtitle("Total death(s) in Confirmed Ebola Cases in Liberia")
+```
+
+Refer to the diagram, the total number of deaths was increased from July to mid-October 2014. Montserrado County in Liberia with the most number of deaths in confirmed cases. Since the data did not record the total number of death in confirmed cases after mid-October, we have no idea if there is any decrease after mid-October.
+
+#### New Case/s (Probable)
+
+Let's check the the number of new probable Ebola cases in Liberia.
+
+
+```{r}
+newCasesProb = allData[allData$variable == "new case/s (probable)", ]
+
+#remove the column about variable
+newCasesProb$variable = NULL
+t = melt(newCasesProb, id.vars="date")
+
+lp1 = ggplot(data=t, aes(x=date, y=value, group=variable, color=variable)) + geom_point() + geom_line(data=t[!is.na(t$value),], size=2)
+
+lp1 + scale_colour_manual(name = "Location",
+                          values=getPalette(colorCount),
+                          breaks=c("national", "bomi.county", "bong.county",
+                                   "grand.kru", "lofa.county", "margibi.county",
+                                   "maryland.county", "montserrado.county", "nimba.county",
+                                   "river.gee.county", "rivercess.county", "sinoe.county",
+                                   "gbarpolu.county", "grand.bassa", "grand.cape.mount",
+                                   "grand.gedeh"),
+                          labels=c("National", "Bomi County", "Bong County",
+                                   "Grand Kru County", "Lofa County", "Margibi County",
+                                   "Maryland County", "Montserrado County", "Nimba County",
+                                   "River Gee County", "Rivercess County", "Sinoe County",
+                                   "Gbarpolu County", "Grand Bassa County", "Grand Cape Mount County",
+                                   "Grand Gedeh County"))  +
+  xlab("Year 2014") +
+  ylab("Number of New Probable Ebola Cases in Liberia")  + 
+  ggtitle("New Probable Cases")
+```
+
+Refer to the graph, we can see that the number of new probable cases is quite fluctuate from July to December 2014. There is a great increase in Lofa County in August. Furthmore, there are two peaks in Montserrado County in mid-September and mid-October. However, we can see that the number of probable case is decreasing after mid-October.
+
+#### Total Confirmed Ebola Cases in Libera
+
+When I first plotted the graph with the orginal data, I found that there is inconsistent value in the total confirmed Ebola cases in the data. Thus, I defined a function to remove the inconsistent value. 
+
+```{r}
+library(zoo) #for locf function
+
+#remove the inconsistent accumlated value
+removeInconsistent = function(values){
+  orgValues = values
+  #forward check
+  idx = which(diff(na.locf(values, na.rm=FALSE))<0) + 1
+  if(length(idx) != 0){
+    values[idx] = NA  
+  }
+  
+  #backward check
+  idx = which(rev(diff(na.locf(rev(values), na.rm=FALSE)) > 0))
+  if(length(idx) != 0){
+    values[idx] = NA  
+  }
+  values
+}
+
+totalConfirmedCases = allData[allData$variable == "total confirmed cases", ]
+#remove the column about variable
+totalConfirmedCases$variable = NULL
+#for each 2nd column till the last column, remove the inconsistent value
+for (i in 2:ncol(totalConfirmedCases)){
+  totalConfirmedCases[,i] = removeInconsistent(totalConfirmedCases[, i])  
+}
+
+t = melt(totalConfirmedCases, id.vars="date")
+
+
+lp1 = ggplot(data=t, aes(x=date, y=value, group=variable, color=variable)) + geom_point() + geom_line(data=t[!is.na(t$value),], size=2)
+
+lp1 + scale_colour_manual(name = "Location",
+                          values=getPalette(colorCount),
+                          breaks=c("national", "bomi.county", "bong.county",
+                                   "grand.kru", "lofa.county", "margibi.county",
+                                   "maryland.county", "montserrado.county", "nimba.county",
+                                   "river.gee.county", "rivercess.county", "sinoe.county",
+                                   "gbarpolu.county", "grand.bassa", "grand.cape.mount",
+                                   "grand.gedeh"),
+                          labels=c("National", "Bomi County", "Bong County",
+                                   "Grand Kru County", "Lofa County", "Margibi County",
+                                   "Maryland County", "Montserrado County", "Nimba County",
+                                   "River Gee County", "Rivercess County", "Sinoe County",
+                                   "Gbarpolu County", "Grand Bassa County", "Grand Cape Mount County",
+                                   "Grand Gedeh County")) +
+  xlab("Year 2014") +
+  ylab("Total Number of Confirmed  Cases")  + 
+  ggtitle("Total Number of Confirmed Ebola Cases in Liberia")
+
+
+```
+
+Montserrado County had a great increased in the total number of confirmed Ebola cases at the beginning of September and in the mid-October. Lofa County also has a shape increase at the beginning of September. However, in Lofa County, the number of confirmed Ebola cases was only steadily increasing from October. 
+
+### Choropleth map - The Number of New Ebola Cases (confirmed, probable and suspected) in Liberia
+
+To get some idea how Ebola spread in Liberia, it would be great if we can shows the choropleth map about the number of new cases (confirmed, probable and suspected) in Liberia. I learnt how to plot choropleth from [3] and I downloaded the adminstrative boundary level 1 of Liberia from [4].
+
+Since the orignal data about the new Ebola cases are seperarte into three variables: confirmed, probable and suspected, I need to calculate the total value of news cases for each county in each month. Then, I plot the 
+corrsponding choropleth map accordingly.
+
+```{r}
+
+#extract the new cases
+newCases = allData[grepl("new case*", allData$variable), ]
+#drop variable, national column
+newCases$variable = NULL
+newCases$national = NULL
+
+#convert the date to store month value only
+newCases$date = unlist(lapply(newCases$date, function(x){format(x, "%m")}))
+
+#calculate the total number of new cases for each month
+newCases = ddply(newCases, .(date), function(x) colSums(x[,-1], na.rm = TRUE))
+
+```
+
+At this stage, we finished the preparing the data for plotting Choropleth.
+
+```{r}
+newCases
+```
+
+
+```{r}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+# from: http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid)
+  
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+
+# melt the data frame 
+newCases = melt(newCases, id.vars="date")
+
+
+#mapping for the map
+#replace the name
+mapping = data.frame(shortForm = c("bomi.county", "bong.county",
+                                   "grand.kru", "lofa.county", "margibi.county",
+                                   "maryland.county", "montserrado.county", "nimba.county",
+                                   "river.gee.county", "rivercess.county", "sinoe.county",
+                                   "gbarpolu.county", "grand.bassa", "grand.cape.mount",
+                                   "grand.gedeh"),
+                     fullName = c("BOMI", "BONG", 
+                                  "GRANDKRU", "LOFA", "MARGIBI",
+                                  "MARYLAND", "MONTSERRADO", "NIMBA",
+                                  "RIVER GEE", "RIVER CESS", "SINOE",
+                                  "GBAPOLU", "GRANDBASSA", "GRAND CAPE MOUNT", 
+                                  "GRANDGEDEH"))
+
+#update the county name
+newCases$variable = factor(newCases$variable, levels=mapping$shortForm, labels=mapping$fullName)
+
+
+#plot the map
+library(scales)
+library(rgeos)
+library(maptools)
+
+lbr_dist <- readShapeSpatial("./LBR_adm/LBR_adm1.shp") #admin boundary level 1
+lbr_dist <- fortify(lbr_dist, region = "NAME_1") # get the name of county for plotting
+lbr_dist$id <- toupper(lbr_dist$id) #change the id to uppercase
+#calculate the center
+distcenters <- ddply(lbr_dist, .(id), summarize, clat = mean(lat), clong = mean(long))
+
+### prepare the plot for each month ###
+jun = newCases[newCases$date == "06", c("variable", "value")]
+p1 = ggplot() + geom_map(data =jun, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nJun 2014")
+
+
+jul = newCases[newCases$date == "07", c("variable", "value")]
+p2 = ggplot() + geom_map(data =jul, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nJul 2014")
+
+aug = newCases[newCases$date == "08", c("variable", "value")]
+p3 = ggplot() + geom_map(data =aug, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nAug 2014")
+
+sept = newCases[newCases$date == "09", c("variable", "value")]
+p4 = ggplot() + geom_map(data =sept, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nSept 2014")
+
+oct = newCases[newCases$date == "10", c("variable", "value")]
+p5 = ggplot() + geom_map(data =oct, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nOct 2014")
+
+nov = newCases[newCases$date == "11", c("variable", "value")]
+p6 = ggplot() + geom_map(data =nov, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nNov 2014")
+
+dec = newCases[newCases$date == "12", c("variable", "value")]
+p7 = ggplot() + geom_map(data =dec, aes(map_id = variable, fill = value), 
+                         map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
+  scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
+  geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
+  xlab("")+ ylab("") +
+  ggtitle("The Number of New Ebola Cases in Liberia\nDec 2014")
+
+
+
+
+p1 #Jun
+p2 #Jul
+p3 #Aug
+p4 #Sept
+p5 #Oct
+p6 #Nov
+p7 #Dec
+```
+
+Refer to these graphs, we can see that the protential source of the Ebola cases were from Lofa and Monsterrado in Liberia. Since Bong is located in between Lofa and Montserrado, Ebola spreaded to Bong in July. In addition, the counties next to Monserrado, i.e. Bomi and Grandbassa.
+
+In Aug 2014, Lofa and Monserrado had a great increase in the number of new Ebloa cases and Ebloa spread outwards to counties such as Numba.
+
+In September 2014, Monserrado had the most number of new Ebloa cases. There is also a great increases in Lofa, Bong, Nuba. As Monserrado would be the protential source of Eloba, the counties next to it, such as Margibi, Bomi and Grandassa, also had an increase in the new Ebloa cases. 
+
+In October 2014, Monserrado reached around 750 new cases and there is a trend that Eloba spread to the boundary of Liberia.
+
+In November and Decmeber 2014, the number of new cases were greatly decreased. It showed that the situation was under control. Although Monserrado still has around 400 cases, the other nearby counties did not have any more increase in the number of new cases.
+
+### Conclusion
+
+The potential sources location of Eloba in Liberia are Lofa and Monserrado. It spreads to the nearby counties in short period of time and greatly affected the other countries in September 2014. It seems that the spread was stopped, but, Montserrado still had a great number of new cases October 2014 which would  tigger another wave of spread. Lucky that the spread was stopped in November 2014. Since the data was in-complete in December (we only have data till 02 December 2014), we cannot draw the conclusion that if Ebola already stopped spreading to the other counties. From the news, the spread of Ebola should now be under-controlled.
+
+
+
+
+
+
+### Reference
+
+[1] - https://github.com/tristantao/ebola/tree/master/liberia_data
+
+[2] - https://github.com/tristantao/ebola/blob/master/liberia_data/help_me/template.csv
+
+[3] - http://bl.ocks.org/prabhasp/raw/5030005/
+
+[4] - http://gadm.org/
