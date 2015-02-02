@@ -15,9 +15,9 @@ Sys.setlocale("LC_TIME", "English")
 
 ### Background
 
-The dataset would be downloaded from [1]. There are 95 csv files. Each of them contains contains 38 pieces of information (we called this _variables_) among different counties, including national record, in Liberia. [2]
+The dataset would be downloaded from [1]. There are 95 csv files. Each of them contains 38  _variables_ among different counties in Liberia. [2]
 
-Those 38 pieces of information are:
+Those 38 variables are:
 
 - Specimens collected
 - Specimens pending for testing
@@ -70,9 +70,9 @@ Those 38 pieces of information are:
 - RiverCess County
 - Sinoe County
 
-### 1: Aggregation + Data Munging 
+### 1: Aggregation
 
-Suppose all the csv files are already downloaded in the machine. Then, it is necessary to aggregate the files into a single workable dataset.
+Suppose all the csv files are already downloaded in the machine. First, we need to aggregate all csv files into a single workable dataset.
 
 ```{r}
 #set working directory
@@ -92,20 +92,20 @@ allData = do.call(rbind.fill, lapply(csvFiles, read.csv))
 colnames(allData) = tolower(colnames(allData))
 ```
 
-First, let's check if there are really 38 different variables.
+Let's see if there are really 38 different variables.
 
 ```{r}
 variableNames = unique(allData$variable)
 ```
 
-But, there are `r length(variableNames)` difference variable names in all csv files. They are:
+As we can see, there are `r length(variableNames)` difference variable, rather than 38, among all csv files. They are:
 
 ```{r echo=FALSE}
 sort(variableNames)
 ```
 
-It is necessary to rename a number of variables names. For example, remove "\n" from the variable names.
-Furthermore, to ease for maniplulation, I converted the values of the variables into lowercase.
+Thus, it is necessary to rename/combine a number of variables. For example, remove "\n" from the variable names.
+Furthermore, to ease for manipulation, all variable names were converted into lowercase.
 
 ```{r}
 allData$variable = gsub("\n ", "", allData$variable)
@@ -115,29 +115,29 @@ variableNames = unique(allData$variable)
 sort(variableNames)
 ```
 
-We finished the update about the variable names, now let's see the column names.
+After finished the update of the variable names, now let's see the column names.
 
 ```{r}
 sort(colnames(allData))
 ```
-There are 19 columns among all csv files. There is a weird column namded "x".  I'd like to check how many row(s) with non-NA values in column x.
+There are 19 columns among all csv files. There is a weird column namded "x".  I wondered how many row(s) with non-NA values in such column.
 
 ```{r}
 allData[!is.na(allData$x), ] 
 ```
 
-There are only 3 rows with non-NA values in column 'x'. It seems that those values in column x is not really meaningful (with value 0 or 1). I decided to drop this.
+From the result shown above, there are only 3 rows with non-NA values in column 'x'. It seems that those values are not meaningful (with value 0 or 1) and I decided to drop this column.
 
 ```{r}
 allData$x = NULL #drop column x
 ```
 
-Next, I would like to check the date format and see if they are consistent.
+Next, I'd like to check the date format and see if they are consistent.
 
 ```{r}
 unique(allData$date)
 ```
-There are 94 Ebloa records between 6 June 2014 and 2 December 2014. From this information, we can learn that the Ebloa data was not updated every day in such close-to-half-year period. For the date format, as we can see that they are inconsistent. Some of them use the short form of the year (e.g. 14 for 2014) and some of them with the leading zero of the month (e.g. 09 for September). It is better to convert the date in consist way.
+There are 94 Ebloa records between 6 June 2014 and 2 December 2014. Based on this information, we can see that the data was not updated every day in such period. Also, the date format of the data are inconsistent. Some of them use the short form of the year (e.g. 14 for 2014) and some of them with the leading zero for the month value (e.g. 09 for September). It is required to convert the date value in a consistent format.
 
 ```{r}
 #correct the date format
@@ -188,7 +188,7 @@ lp1 + scale_colour_manual(name = "Location",
   ggtitle("Total death(s) in Confirmed Ebola Cases in Liberia")
 ```
 
-Refer to the diagram, the total number of deaths was increased from July to mid-October 2014. Montserrado County in Liberia with the most number of deaths in confirmed cases. Since the data did not record the total number of death in confirmed cases after mid-October, we have no idea if there is any decrease after mid-October.
+Refer to the graph, the total number of deaths was increased from July to mid-October 2014. In Liberia, Montserrado County had the most number of deaths in confirmed cases. Since the data did not provide any update about the total number of death in confirmed cases after mid-October, we have no idea if there is any increase /decrease after mid-October.
 
 #### New Case/s (Probable)
 
@@ -223,11 +223,11 @@ lp1 + scale_colour_manual(name = "Location",
   ggtitle("New Probable Cases")
 ```
 
-Refer to the graph, we can see that the number of new probable cases is quite fluctuate from July to December 2014. There is a great increase in Lofa County in August. Furthmore, there are two peaks in Montserrado County in mid-September and mid-October. However, we can see that the number of probable case is decreasing after mid-October.
+Refer to the graph, we can see that the number of new probable cases was quite fluctuate from July to December 2014. There was a great increase in Lofa County in August 2014. In addition, there were two peaks in Montserrado County around mid-September and mid-October. However, we can see that the number of probable case was decreasing after mid-October 2014.
 
 #### Total Confirmed Ebola Cases in Libera
 
-When I first plotted the graph with the orginal data, I found that there is inconsistent value in the total confirmed Ebola cases in the data. Thus, I defined a function to remove the inconsistent value. 
+When I first plotted the graph with the orginal data, I found that there is inconsistent value in the total confirmed Ebola cases in the data (the accumlated value dropped which was invalid). Thus, I defined a function to remove the inconsistent value. 
 
 ```{r}
 library(zoo) #for locf function
@@ -283,14 +283,13 @@ lp1 + scale_colour_manual(name = "Location",
 
 ```
 
-Montserrado County had a great increased in the total number of confirmed Ebola cases at the beginning of September and in the mid-October. Lofa County also has a shape increase at the beginning of September. However, in Lofa County, the number of confirmed Ebola cases was only steadily increasing from October. 
+Montserrado County had a great increased in the total number of confirmed Ebola cases at the beginning of September and in the mid-October 2014. Lofa County also has a shape increase at the beginning of September 2014. However, in Lofa County, the number of confirmed Ebola cases was only steadily increasing from October 2014. 
 
 ### Choropleth map - The Number of New Ebola Cases (confirmed, probable and suspected) in Liberia
 
-To get some idea how Ebola spread in Liberia, it would be great if we can shows the choropleth map about the number of new cases (confirmed, probable and suspected) in Liberia. I learnt how to plot choropleth from [3] and I downloaded the adminstrative boundary level 1 of Liberia from [4].
+To get some idea how Ebola spread in Liberia, a choropleth map about the number of new cases (confirmed, probable and suspected) in Liberia was created. I mainly refer to [3] to learn how to plot choropleth and I downloaded the adminstrative boundary level 1 of Liberia from [4].
 
-Since the orignal data about the new Ebola cases are seperarte into three variables: confirmed, probable and suspected, I need to calculate the total value of news cases for each county in each month. Then, I plot the 
-corrsponding choropleth map accordingly.
+Since the orignal data about the new Ebola cases are seperarted into three variables: confirmed, probable and suspected, It is required to sum these three values to obtain the total value of news cases for each county in each month. Then, I plotted thecorrsponding choropleth map accordingly.
 
 ```{r}
 
@@ -468,25 +467,19 @@ p6 #Nov
 p7 #Dec
 ```
 
-Refer to these graphs, we can see that the protential source of the Ebola cases were from Lofa and Monsterrado in Liberia. Since Bong is located in between Lofa and Montserrado, Ebola spreaded to Bong in July. In addition, the counties next to Monserrado, i.e. Bomi and Grandbassa.
+Refer to these graphs, we can see that the protential source of the Ebola cases in Liberia were from Lofa and Monsterrado . Since Bong is located in between Lofa and Montserrado, Ebola spreaded to Bong in July and the counties next to Monserrado, i.e. Bomi and Grandbassa.
 
-In Aug 2014, Lofa and Monserrado had a great increase in the number of new Ebloa cases and Ebloa spread outwards to counties such as Numba.
+In August 2014, Lofa and Monserrado had a great increase in the number of new Ebloa cases and Ebloa spread outwards to counties such as Numba.
 
-In September 2014, Monserrado had the most number of new Ebloa cases. There is also a great increases in Lofa, Bong, Nuba. As Monserrado would be the protential source of Eloba, the counties next to it, such as Margibi, Bomi and Grandassa, also had an increase in the new Ebloa cases. 
+In September 2014, Monserrado had the most number of new Ebloa cases. There is also a great increases in Lofa, Bong, Nuba. The counties next to Monserrado, such as Margibi, Bomi and Grandassa, also had an increase in the new Ebloa cases. 
 
-In October 2014, Monserrado reached around 750 new cases and there is a trend that Eloba spread to the boundary of Liberia.
+In October 2014, Monserrado reached around 750 new cases and there was a trend that Eloba spread to the boundary of Liberia.
 
-In November and Decmeber 2014, the number of new cases were greatly decreased. It showed that the situation was under control. Although Monserrado still has around 400 cases, the other nearby counties did not have any more increase in the number of new cases.
+In November and Decmeber 2014, the number of new cases were greatly decreased. It showed that the situation was under control. Although Monserrado still has around 400 new cases, the other nearby counties did not have any more increase in the number of new cases.
 
 ### Conclusion
 
-The potential sources location of Eloba in Liberia are Lofa and Monserrado. It spreads to the nearby counties in short period of time and greatly affected the other countries in September 2014. It seems that the spread was stopped, but, Montserrado still had a great number of new cases October 2014 which would  tigger another wave of spread. Lucky that the spread was stopped in November 2014. Since the data was in-complete in December (we only have data till 02 December 2014), we cannot draw the conclusion that if Ebola already stopped spreading to the other counties. From the news, the spread of Ebola should now be under-controlled.
-
-
-
-
-
-
+The potential sources location of Eloba in Liberia are Lofa and Monserrado. It spreads to the nearby counties in short period of time and greatly affected the other countries in September 2014. In October 2014, It seems that the spread was stopped, but, Montserrado still had a great number of new cases. The great number of new cases in Montserrado would tigger another wave of Eloba spread. Lucky that the spread was halted in November 2014. Since the data was in-complete in December (have collected data up to 02 December 2014), we could not draw any the conclusion that if Ebola already stopped spreading to the other counties. However, from the news, the spread of Ebola is now under-controlled.
 ### Reference
 
 [1] - https://github.com/tristantao/ebola/tree/master/liberia_data

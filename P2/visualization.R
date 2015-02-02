@@ -31,7 +31,7 @@ allData$date = as.Date(gsub("/14$", "/2014", allData$date), "%m/%d/%Y")
 
 #show all unique variable names
 allVariable = unique(allData$variable)
-allVariable
+#allVariable
 
 #there is a column named x, but only 3 rows have data
 #idx = !is.na(allData$x)
@@ -103,11 +103,7 @@ lp1 + scale_colour_manual(name = "Location",
 totalConfirmedCases = allData[allData$variable == "total confirmed cases", ]
 #remove the column about variable
 totalConfirmedCases$variable = NULL
-# there is an error in 10/31/2014
 
-#totalConfirmedCases[totalConfirmedCases$date == "2014-10-08", 2:ncol(totalConfirmedCases)] = NA
-#totalConfirmedCases[totalConfirmedCases$date == "2014-10-31", 2:ncol(totalConfirmedCases)] = NA
-#totalConfirmedCases[totalConfirmedCases$date == "2014-11-04", 2:ncol(totalConfirmedCases)] = NA
 library(zoo)
 
 removeInconsistent = function(values){
@@ -132,9 +128,6 @@ for (i in 2:ncol(totalConfirmedCases)){
 }
 
 t = melt(totalConfirmedCases, id.vars="date")
-#xaxisTickLabels = unique(t$date)
-#xaxisTickLabels = gsub("/14$", "/2014", xaxisTickLabels)
-#xaxisTickLabels = as.Date(xaxisTickLabels, "%m/%d/%Y")
 
 lp1 = ggplot(data=t, aes(x=date, y=value, group=variable, color=variable)) + geom_point() + geom_line(data=t[!is.na(t$value),], size=2)
 
@@ -243,7 +236,7 @@ p5 = ggplot() + geom_map(data =oct, aes(map_id = variable, fill = value),
   ggtitle("The Number of New Ebola Cases in Liberia\nOct 2014")
 
 nov = newCases[newCases$date == "11", c("variable", "value")]
-p5 = ggplot() + geom_map(data =nov, aes(map_id = variable, fill = value), 
+p6 = ggplot() + geom_map(data =nov, aes(map_id = variable, fill = value), 
                          map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
   scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
   geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
@@ -251,7 +244,7 @@ p5 = ggplot() + geom_map(data =nov, aes(map_id = variable, fill = value),
   ggtitle("The Number of New Ebola Cases in Liberia\nNov 2014")
 
 dec = newCases[newCases$date == "12", c("variable", "value")]
-p6 = ggplot() + geom_map(data =dec, aes(map_id = variable, fill = value), 
+p7 = ggplot() + geom_map(data =dec, aes(map_id = variable, fill = value), 
                          map = lbr_dist) + expand_limits(x = lbr_dist$long, y = lbr_dist$lat) + 
   scale_fill_gradient2(low = muted("blue"), mid="orange", midpoint = 400, high = muted("red"), limits = c(0, 800)) + 
   geom_text(data = distcenters, aes(x = clong, y = clat, label = id, size = 0.2)) +
@@ -306,4 +299,4 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   }
 }
 
-multiplot(p1, p4, p2, p5, p3, p6, cols=3)
+multiplot(p1, p3, p5, p7, p2, p4, p6, cols=2)

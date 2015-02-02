@@ -16,4 +16,4 @@ Step 3. Conclusion
 So you got the data and built some visualizations. Now interpret it! Note a few things about the graph. Can you conclude anything? Is the worst over? Maybe it's yet to come? Or not enough data? Let us know your thoughts.
 
 ===
-My solution: XXX
+My solution: http://rpubs.com/tobylam/dataVisualizationOnEbolaData
