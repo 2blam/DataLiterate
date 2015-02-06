@@ -21,6 +21,14 @@ UniqueCarrier - Carrier (20)
 For example, for an AA day time flight on the weekday, the percentage of delayed flights was ~29.3%.
 
 ===
-The file size of the data is too large, I did not upload it.
+** The data file size  is too large, I did not upload it.
 
-My solution: XXX
+Answer 1: 
+OGD
+
+Answer 2: 
+iata numofflight probdelay
+HNL       17626 0.5018722
+
+Answer 3:
+uploaded to this repo
