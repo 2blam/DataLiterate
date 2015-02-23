@@ -11,8 +11,6 @@ colnames(data) = tolower(colnames(data))
 # in the dest column, but not in origin column
 setdiff(levels(data$dest), levels(data$origin))
 
-
-
 #Which airport, as defined by the IATA code, 
 # has at least 10,000 flights and had the lowest probability
 # for a delayed flight in the data?
@@ -20,17 +18,21 @@ setdiff(levels(data$dest), levels(data$origin))
 df = data[, c("origin", "dest", "depdelay", "arrdelay")]
 df$depdelay2 = NA
 df$arrdelay2 = NA
-df[which(df$depdelay>0), "depdelay2"] = 1
-df[which(df$depdelay<=0), "depdelay2"] = 0
+idx = which(df$depdelay>0)
+df[idx, "depdelay2"] = 1
+#idx =which(df$depdelay<=0)
+#df[idx, "depdelay2"] = 0
 
-df[which(df$arrdelay>0), "arrdelay2"] = 1
-df[which(df$arrdelay<=0), "arrdelay2"] = 0
+idx = which(df$arrdelay>0)
+df[idx, "arrdelay2"] = 1
+#idx = which(df$arrdelay<=0)
+#df[idx, "arrdelay2"] = 0
 
 #drop columns
 df$depdelay = NULL
 df$arrdelay = NULL
 
-colnames(df) = c("origin", "dest", "depdeplay", "arrdelay")
+colnames(df) = c("origin", "dest", "depdelay", "arrdelay")
 
 getProbDelay = function(df, iataCode){
   #filter the related iata data
@@ -38,8 +40,12 @@ getProbDelay = function(df, iataCode){
   #get the total number of flight
   totalFlight = nrow(temp)
   #get the total number of delay
-  totalDelay = sum(temp$depdeplay, na.rm = TRUE) + sum(temp$arrdelay, na.rm = TRUE) 
+  orgDelay = sum(temp$arrdelay & temp$origin== iataCode, na.rm = TRUE) 
+  destDelay = sum(temp$depdelay & temp$dest== iataCode, na.rm = TRUE) 
+  totalDelay = orgDelay + destDelay
   probDelay = totalDelay / totalFlight
+  #print(paste0("org late:", orgDelay))
+  #print(paste0("dest late:", destDelay))
   c(iataCode, totalFlight, probDelay)
 }
 
@@ -69,12 +75,18 @@ df$deptime2 = NA
 df[df$dayofweek <= 5, "dayofweek2"] = "Weekday"
 df[df$dayofweek >= 6, "dayofweek2"] = "Weekend"
 
+# I am not totally agree with the suggested solution. 
+# In the solution, it did not include the boundary case.
+# From my point of view, it is better to include the boundary case.
+# For example, in day time: df$deptime >= 501 & df$deptime <= 1700 rather than
+#                           df$deptime > 501 & df$deptime < 1700
+
 df[which(df$deptime >= 501 & df$deptime <= 1700), "deptime2"] = "Day Time"
 df[which(df$deptime >= 1701 & df$deptime <= 2400), "deptime2"] = "Night Time"
 df[which(df$deptime >= 0000 & df$deptime <= 500), "deptime2"] = "Red Eye"
 
-df[which(df$arrdelay > 0 | df$depdelay >0), "delay"] = 1
-df[which(df$arrdelay <= 0 & df$depdelay <= 0), "delay"] = 0
+df[which(df$arrdelay > 0 & df$depdelay >0), "delay"] = 1
+#df[which(df$arrdelay <= 0 | df$depdelay <= 0), "delay"] = 0
 
 df$dayofweek = NULL
 df$deptime = NULL
@@ -86,7 +98,7 @@ colnames(df)[3] = "deptime"
 
 #drop NA
 df = df[-which(is.na(df$deptime)), ]
-df = df[-which(is.na(df$delay)), ]
+#df = df[-which(is.na(df$delay)), ]
 
 #t = melt(df)
 #dcast(t, uniquecarrier + dayofweek+deptime ~ variable, fun.aggregate=length)
@@ -95,5 +107,5 @@ df = df[-which(is.na(df$delay)), ]
 library(plyr)
 
 #ddply(temp, c("uniquecarrier", "dayofweek", "deptime"), summarise, totalFlight = sum(!is.na(uniquecarrier)), totalDelay = sum(delay), prob = sum(delay) / sum(!is.na(uniquecarrier)))
-result = ddply(df, c("uniquecarrier", "dayofweek", "deptime"), summarise, probdelay = sum(delay) / sum(!is.na(uniquecarrier)))
+result = ddply(df, c("uniquecarrier", "dayofweek", "deptime"), summarise, probdelay = sum(delay, na.rm=T) / sum(!is.na(uniquecarrier)))
 write.csv(result, file="output_R.csv", row.names=F)
