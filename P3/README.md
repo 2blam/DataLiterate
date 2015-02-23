@@ -27,8 +27,8 @@ Answer 1:
 OGD
 
 Answer 2: 
-iata numofflight probdelay
-HNL       17626 0.5018722
+iata numofflight	probdelay
+ HNL        17626	0.258312
 
 Answer 3:
 uploaded to this repo
